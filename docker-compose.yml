@@ -2,7 +2,8 @@ version: '3.7'
 
 services:
   xnat:
-    build: /Users/mjbarrett/Code/athena/docker-xnat-web
+    # build: https://github.com/barrettMCW/docker-xnat-web.git
+    build: ../docker-xnat-web
     environment:
       - CATALINA_OPTS=-Xms${XNAT_MIN_HEAP:-256m} -Xmx${XNAT_MAX_HEAP:-4g} -Dxnat.home=${XNAT_HOME:-/data/xnat/home}
       - POSTGRES_DB=${XNAT_DB_NAME:-xnat}
