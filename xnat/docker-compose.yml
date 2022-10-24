@@ -1,0 +1,79 @@
+version: '3.7'
+
+services:
+  xnat:
+    build: ${DXA_XNAT_DOCKERFILE:-https://github.com/barrettMCW/docker-xnat-web.git}
+    env_file: ${DXA_CONF_DIR:-./xnat-dev-conf}/xnat.env
+    environment:
+      - XNAT_ROOT=/data/xnat
+      - XNAT_HOME=/data/xnat/home
+      - POSTGRES_DB=${XNAT_DB_NAME:-xnat}
+      - POSTGRES_HOST=db
+      - POSTGRES_USER=${XNAT_DB_USER:-xnat}
+      - POSTGRES_PASSWORD=${XNAT_DB_PASS:-password}
+      - CATALINA_OPTS=-Xms${XNAT_MIN_HEAP:-256m} -Xmx${XNAT_MAX_HEAP:-4g} -Dxnat.home=/data/xnat/home ${DXA_CATALINA_OPTS}
+      - XNAT_DATASOURCE_NAME=${XNAT_DB_NAME:-xnat}
+      - XNAT_DATASOURCE_USERNAME=${XNAT_DB_USER:-xnat}
+      - XNAT_DATASOURCE_PASSWORD=${XNAT_DB_PASS:-password}
+      - XNAT_DATASOURCE_DRIVER=org.postgresql.Driver
+
+    volumes:
+      - ${DXA_DATA_DIR:-./instance}/home/logs:/data/xnat/home/logs
+      - ${DXA_DATA_DIR:-./instance}/archive:/data/xnat/archive
+      - ${DXA_DATA_DIR:-./instance}/build:/data/xnat/build
+      - ${DXA_DATA_DIR:-./instance}/cache:/data/xnat/cache
+      - /var/run/docker.sock:/var/run/docker.sock
+  
+    depends_on:
+      - db
+
+    ports:
+      - 8104:8104
+
+    networks:
+      - frontend
+      - backend
+
+  db:
+    image: postgres:12.2-alpine
+
+    ports:
+      - "5432"
+
+    volumes:
+      - ${DXA_DATA_DIR:-./instance}/postgres-data:/data
+
+    environment:
+      - POSTGRES_DB=${XNAT_DB_NAME:-xnat}
+      - POSTGRES_USER=${XNAT_DB_USER:-xnat}
+      - POSTGRES_PASSWORD=${XNAT_DB_PASS:-password}
+      - PGDATA=/data
+
+    networks:
+      - backend
+
+  nginx:
+    build: 
+      context: ${DXA_NGINX_DOCKERFILE:-./nginx/}
+      args:
+        - NGINX_VERSION=${NGINX_VERSION:-1.19-alpine-perl}
+
+    depends_on:
+      - xnat
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - frontend
+
+networks:
+  frontend:
+  backend:
+
+#static web files in temp filesys
+volumes:
+  static:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+
