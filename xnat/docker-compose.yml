@@ -3,38 +3,35 @@ version: '3.7'
 services:
   xnat:
     build: ${DXA_XNAT_DOCKERFILE:-https://github.com/barrettMCW/docker-xnat-web.git}
-    env_file: ${DXA_CONF_DIR:-./xnat-dev-conf}/xnat.env
+    env_file: ${DXA_CONF_DIR:-./configs/xnat-dev-conf}/xnat/xnat.env
+
     environment:
-      - XNAT_ROOT=/data/xnat
-      - XNAT_HOME=/data/xnat/home
+      - POSTGRES_HOST=xnatpg
       - POSTGRES_DB=${XNAT_DB_NAME:-xnat}
-      - POSTGRES_HOST=db
       - POSTGRES_USER=${XNAT_DB_USER:-xnat}
       - POSTGRES_PASSWORD=${XNAT_DB_PASS:-password}
       - CATALINA_OPTS=-Xms${XNAT_MIN_HEAP:-256m} -Xmx${XNAT_MAX_HEAP:-4g} -Dxnat.home=/data/xnat/home ${DXA_CATALINA_OPTS}
-      - XNAT_DATASOURCE_NAME=${XNAT_DB_NAME:-xnat}
-      - XNAT_DATASOURCE_USERNAME=${XNAT_DB_USER:-xnat}
-      - XNAT_DATASOURCE_PASSWORD=${XNAT_DB_PASS:-password}
-      - XNAT_DATASOURCE_DRIVER=org.postgresql.Driver
 
     volumes:
-      - ${DXA_DATA_DIR:-./instance}/home/logs:/data/xnat/home/logs
-      - ${DXA_DATA_DIR:-./instance}/archive:/data/xnat/archive
-      - ${DXA_DATA_DIR:-./instance}/build:/data/xnat/build
+      - nginx-conf:/etc/nginx/conf.d
+      - ${DXA_CONF_DIR:-./xnat-dev-conf}/nginx:/nginx
+
       - ${DXA_DATA_DIR:-./instance}/cache:/data/xnat/cache
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DXA_DATA_DIR:-./instance}/build:/data/xnat/build
+      - ${DXA_LOG_DIR:-./instance}/xnat:/data/xnat/home/logs
+      - ${DXA_DATA_DIR:-./instance}/archive:/data/xnat/archive
   
     depends_on:
-      - db
+      - xnatpg
 
     ports:
       - 8104:8104
-
+      
     networks:
       - frontend
       - backend
 
-  db:
+  xnatpg:
     image: postgres:12.2-alpine
 
     ports:
@@ -42,6 +39,7 @@ services:
 
     volumes:
       - ${DXA_DATA_DIR:-./instance}/postgres-data:/data
+      - ${DXA_CONF_DIR:-./configs/xnat-dev-conf}/xnatpg/postgre.conf:/etc/postgresql/postgresql.conf:ro
 
     environment:
       - POSTGRES_DB=${XNAT_DB_NAME:-xnat}
@@ -53,18 +51,21 @@ services:
       - backend
 
   nginx:
-    build: 
-      context: ${DXA_NGINX_DOCKERFILE:-./nginx/}
-      args:
-        - NGINX_VERSION=${NGINX_VERSION:-1.19-alpine-perl}
+    build: ${DXA_PROXY_DOCKERFILE:-../../nginxLLAB}
 
     depends_on:
-      - xnat
+      xnat:
+        condition: service_healthy
+
     ports:
       - "80:80"
       - "443:443"
+
     networks:
       - frontend
+
+    volumes:
+      - "nginx-conf:/etc/nginx/conf.d/volume"
 
 networks:
   frontend:
@@ -72,7 +73,12 @@ networks:
 
 #static web files in temp filesys
 volumes:
-  static:
+  nginx-conf:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+
+  xnat-static:
     driver_opts:
       type: tmpfs
       device: tmpfs

@@ -12,6 +12,7 @@ manifest*.json
 gradle.properties
 
 # Ignore instance data
+xnat/.env
 xnat/instance
 xnat/xnat-conf
 
