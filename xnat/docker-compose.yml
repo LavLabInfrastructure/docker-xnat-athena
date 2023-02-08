@@ -89,8 +89,3 @@ volumes:
       type: tmpfs
       device: tmpfs
 
-  xnat-static:
-    driver_opts:
-      type: tmpfs
-      device: tmpfs
-
