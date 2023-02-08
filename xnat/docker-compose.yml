@@ -2,56 +2,64 @@ version: '3.7'
 
 services:
   xnat:
-    build: ${DXA_XNAT_DOCKERFILE:-https://github.com/barrettMCW/docker-xnat-web.git}
-    env_file: ${DXA_CONF_DIR:-./configs/xnat-dev-conf}/xnat/xnat.env
-
+    build: 
+      context: ${XNAT_DOCKERFILE:-https://github.com/barrettMCW/docker-xnat-web.git}
+      args:
+        - XNAT_VERSION=${XNAT_VERSION:-1.8.6.1}
+    env_file: ${DXA_CONF_DIR:-./configs/xnat-conf}/xnat/xnat.env
+    
     environment:
-      - POSTGRES_HOST=xnatpg
-      - POSTGRES_DB=${XNAT_DB_NAME:-xnat}
-      - POSTGRES_USER=${XNAT_DB_USER:-xnat}
-      - POSTGRES_PASSWORD=${XNAT_DB_PASS:-password}
-      - CATALINA_OPTS=-Xms${XNAT_MIN_HEAP:-256m} -Xmx${XNAT_MAX_HEAP:-4g} -Dxnat.home=/data/xnat/home ${DXA_CATALINA_OPTS}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-xnat}
+      - POSTGRES_USER=${POSTGRES_USER:-xnat}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - CATALINA_OPTS=-Xms${XNAT_MIN_HEAP:-256m} -Xmx${XNAT_MAX_HEAP:-4g} -Dxnat.home=/data/xnat/home ${XNAT_CATALINA_OPTS}
+    
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
 
     volumes:
       - nginx-conf:/etc/nginx/conf.d
-      - ${DXA_CONF_DIR:-./xnat-dev-conf}/nginx:/nginx
+      - ${CERT_DIR:-./certs}/xnat:/etc/ssl/xnat:ro
+      - ${DXA_CONF_DIR:-./configs/xnat-conf}/nginx:/nginx
+      - ${DXA_CONF_DIR:-./configs/xnat-conf}/xnat/auth/:/data/xnat/home/config/auth/:ro
 
       - ${DXA_DATA_DIR:-./instance}/cache:/data/xnat/cache
       - ${DXA_DATA_DIR:-./instance}/build:/data/xnat/build
-      - ${DXA_LOG_DIR:-./instance}/xnat:/data/xnat/home/logs
       - ${DXA_DATA_DIR:-./instance}/archive:/data/xnat/archive
+      - ${DXA_LOG_DIR:-./instance/logs}/xnat:/data/xnat/home/logs
   
     depends_on:
-      - xnatpg
-
-    ports:
-      - 8104:8104
+      - postgres
       
     networks:
       - frontend
       - backend
 
-  xnatpg:
-    image: postgres:12.2-alpine
+  postgres:
+    image: postgres:${PG_VERSION:-12.2-alpine}
 
     ports:
       - "5432"
 
     volumes:
-      - ${DXA_DATA_DIR:-./instance}/postgres-data:/data
-      - ${DXA_CONF_DIR:-./configs/xnat-dev-conf}/xnatpg/postgre.conf:/etc/postgresql/postgresql.conf:ro
+      - ${PG_DATA_DIR:-./instance}/postgres:/data
+      - ${DXA_CONF_DIR:-./configs/xnat-conf}/postgres/pg.conf:/etc/postgresql/postgresql.conf:ro
 
     environment:
-      - POSTGRES_DB=${XNAT_DB_NAME:-xnat}
-      - POSTGRES_USER=${XNAT_DB_USER:-xnat}
-      - POSTGRES_PASSWORD=${XNAT_DB_PASS:-password}
       - PGDATA=/data
+      - POSTGRES_DB=${POSTGRES_DB:-xnat}
+      - POSTGRES_USER=${POSTGRES_USER:-xnat}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
 
     networks:
       - backend
 
   nginx:
-    build: ${DXA_PROXY_DOCKERFILE:-../../nginxLLAB}
+    build: 
+      context: ${NGINX_DOCKERFILE:-https://github.com/LavLabInfrastructure/nginxLLAB.git}
+      args:
+        - NGINX_VERSION=${NGINX_VERSION:-1.19-alpine-perl}
 
     depends_on:
       xnat:
@@ -66,6 +74,9 @@ services:
 
     volumes:
       - "nginx-conf:/etc/nginx/conf.d/volume"
+
+      - ${CERT_DIR:-./certs}/xnat:/etc/ssl/xnat:ro
+      - "${DXA_LOG_DIR:-./instance/logs/}/nginx/:/var/log/nginx/"
 
 networks:
   frontend:
