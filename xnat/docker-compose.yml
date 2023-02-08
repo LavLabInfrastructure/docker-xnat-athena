@@ -38,9 +38,9 @@ services:
 
   postgres:
     image: postgres:${PG_VERSION:-12.2-alpine}
-
-    ports:
-      - "5432"
+    healthcheck: 
+      test: ["CMD", "pg_isready ", "-d ${POSTGRES_DB:-xnat}",
+                                  "-U ${POSTGRES_USER:-xnat}"]
 
     volumes:
       - ${PG_DATA_DIR:-./instance}/postgres:/data
@@ -48,6 +48,7 @@ services:
 
     environment:
       - PGDATA=/data
+      - PGUSER=${POSTGRES_USER:-xnat}
       - POSTGRES_DB=${POSTGRES_DB:-xnat}
       - POSTGRES_USER=${POSTGRES_USER:-xnat}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
