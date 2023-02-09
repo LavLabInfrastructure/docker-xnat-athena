@@ -7,6 +7,7 @@ services:
       args:
         - XNAT_VERSION=${XNAT_VERSION:-1.8.6.1}
     env_file: ${DXA_CONF_DIR:-./configs/xnat-conf}/xnat/xnat.env
+    restart: unless-stopped
     
     environment:
       - POSTGRES_HOST=postgres
@@ -38,17 +39,20 @@ services:
 
   postgres:
     image: postgres:${PG_VERSION:-12.2-alpine}
+    restart: unless-stopped
     healthcheck: 
-      test: ["CMD", "pg_isready ", "-d ${POSTGRES_DB:-xnat}",
-                                  "-U ${POSTGRES_USER:-xnat}"]
+      test: ["CMD", "pg_isready ", "-d ${POSTGRES_DB:-omero}",
+                                  "-U ${POSTGRES_USER:-omero}"]
 
     volumes:
-      - ${PG_DATA_DIR:-./instance}/postgres:/data
+      - ${PG_DATA_DIR:-./instance}/postgres:/postgres
+      - ${DXA_LOG_DIR:-./instance/logs}/postgres/:/log/
       - ${DXA_CONF_DIR:-./configs/xnat-conf}/postgres/pg.conf:/etc/postgresql/postgresql.conf:ro
 
     environment:
-      - PGDATA=/data
-      - PGUSER=${POSTGRES_USER:-xnat}
+      - PGDATA=/postgres/data/
+      - POSTGRES_INITDB_WALDIR=/postgres/wal/
+      
       - POSTGRES_DB=${POSTGRES_DB:-xnat}
       - POSTGRES_USER=${POSTGRES_USER:-xnat}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
@@ -61,6 +65,7 @@ services:
       context: ${NGINX_DOCKERFILE:-https://github.com/LavLabInfrastructure/nginxLLAB.git}
       args:
         - NGINX_VERSION=${NGINX_VERSION:-1.19-alpine-perl}
+    restart: unless-stopped
 
     depends_on:
       xnat:
