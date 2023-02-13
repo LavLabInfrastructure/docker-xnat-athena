@@ -3,7 +3,7 @@ version: '3.7'
 services:
   xnat:
     build: 
-      context: ${XNAT_DOCKERFILE:-https://github.com/barrettMCW/docker-xnat-web.git}
+      context: ${XNAT_DOCKERFILE:-https://github.com/LavLabInfrastructure/docker-xnat-web.git}
       args:
         - XNAT_VERSION=${XNAT_VERSION:-1.8.6.1}
     env_file: ${DXA_CONF_DIR:-./configs/xnat-conf}/xnat/xnat.env
@@ -11,27 +11,27 @@ services:
     
     environment:
       - POSTGRES_HOST=postgres
-      - POSTGRES_DB=${POSTGRES_DB:-xnat}
-      - POSTGRES_USER=${POSTGRES_USER:-xnat}
+      - POSTGRES_DB=${POSTGRES_DB:-root}
+      - POSTGRES_USER=${POSTGRES_USER:-root}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - XNAT_POSTGRES_DB=${XNAT_POSTGRES_DB:-xnat}
       - CATALINA_OPTS=-Xms${XNAT_MIN_HEAP:-256m} -Xmx${XNAT_MAX_HEAP:-4g} -Dxnat.home=/data/xnat/home ${XNAT_CATALINA_OPTS}
     
     extra_hosts:
     - "host.docker.internal:host-gateway"
 
     volumes:
-      - nginx-conf:/etc/nginx/conf.d
       - ${CERT_DIR:-./certs}/xnat:/etc/ssl/xnat:ro
-      - ${DXA_CONF_DIR:-./configs/xnat-conf}/nginx:/nginx
       - ${DXA_CONF_DIR:-./configs/xnat-conf}/xnat/auth/:/data/xnat/home/config/auth/:ro
 
       - ${DXA_DATA_DIR:-./instance}/cache:/data/xnat/cache
       - ${DXA_DATA_DIR:-./instance}/build:/data/xnat/build
       - ${DXA_DATA_DIR:-./instance}/archive:/data/xnat/archive
-      - ${DXA_LOG_DIR:-./instance/logs}/xnat:/data/xnat/home/logs
+      - ${LOG_DIR:-./instance/logs}/xnat:/data/xnat/home/logs
   
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
       
     networks:
       - frontend
@@ -41,20 +41,18 @@ services:
     image: postgres:${PG_VERSION:-12.2-alpine}
     restart: unless-stopped
     healthcheck: 
-      test: ["CMD", "pg_isready ", "-d ${POSTGRES_DB:-omero}",
-                                  "-U ${POSTGRES_USER:-omero}"]
+      test: ["CMD", "pg_isready"]
 
     volumes:
       - ${PG_DATA_DIR:-./instance}/postgres:/postgres
-      - ${DXA_LOG_DIR:-./instance/logs}/postgres/:/log/
-      - ${DXA_CONF_DIR:-./configs/xnat-conf}/postgres/pg.conf:/etc/postgresql/postgresql.conf:ro
+      - ${LOG_DIR:-./instance/logs}/postgres/:/log/
 
     environment:
       - PGDATA=/postgres/data/
       - POSTGRES_INITDB_WALDIR=/postgres/wal/
       
-      - POSTGRES_DB=${POSTGRES_DB:-xnat}
-      - POSTGRES_USER=${POSTGRES_USER:-xnat}
+      - POSTGRES_DB=${POSTGRES_DB:-root}
+      - POSTGRES_USER=${POSTGRES_USER:-root}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
 
     networks:
@@ -79,10 +77,9 @@ services:
       - frontend
 
     volumes:
-      - "nginx-conf:/etc/nginx/conf.d/volume"
-
       - ${CERT_DIR:-./certs}/xnat:/etc/ssl/xnat:ro
-      - "${DXA_LOG_DIR:-./instance/logs/}/nginx/:/var/log/nginx/"
+      - "${LOG_DIR:-./instance/logs/}/nginx/:/var/log/nginx/"
+      - ${DXA_CONF_DIR:-./configs/xnat-conf}/nginx:/etc/nginx/conf.d/xnat"
 
 networks:
   frontend:
