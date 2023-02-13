@@ -41,7 +41,7 @@ services:
     image: postgres:${PG_VERSION:-12.2-alpine}
     restart: unless-stopped
     healthcheck: 
-      test: ["CMD", "pg_isready"]
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-root}", "-U", "${POSTGRES_USER:-root}"]
 
     volumes:
       - ${PG_DATA_DIR:-./instance}/postgres:/postgres
