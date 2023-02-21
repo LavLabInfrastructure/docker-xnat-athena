@@ -16,9 +16,6 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - XNAT_POSTGRES_DB=${XNAT_POSTGRES_DB:-xnat}
       - CATALINA_OPTS=-Xms${XNAT_MIN_HEAP:-256m} -Xmx${XNAT_MAX_HEAP:-4g} -Dxnat.home=/data/xnat/home ${XNAT_CATALINA_OPTS}
-    
-    extra_hosts:
-    - "host.docker.internal:host-gateway"
 
     volumes:
       - ${CERT_DIR:-./certs}/xnat:/etc/ssl/xnat:ro
@@ -35,6 +32,7 @@ services:
       
     networks:
       - frontend
+      - xnat-socket
       - backend
 
   postgres:
@@ -81,9 +79,43 @@ services:
       - "${LOG_DIR:-./instance/logs/}/nginx/:/var/log/nginx/"
       - ${DXA_CONF_DIR:-./configs/xnat-conf}/nginx:/etc/nginx/conf.d/xnat"
 
+  xnatdocker:
+    image: tecnativa/docker-socket-proxy
+    restart: always
+    networks:
+      - xnat-socket
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    environment:
+      - LOG_LEVEL=warning # debug,info,notice,warning,err,crit,alert,emerg
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      - AUTH=1
+      - SECRETS=1
+      - POST=1 
+      - BUILD=1
+      - COMMIT=1
+      - CONFIGS=1
+      - CONTAINERS=1
+      - DISTRIBUTION=1
+      - EXEC=1
+      - IMAGES=1
+      - INFO=1
+      - NETWORKS=1
+      - NODES=1
+      - PLUGINS=1
+      - SERVICES=1
+      - SESSION=1
+      - SWARM=1
+      - SYSTEM=1
+      - TASKS=1
+      - VOLUMES=1
+
 networks:
   frontend:
   backend:
+  xnat-socket:
 
 #static web files in temp filesys
 volumes:
