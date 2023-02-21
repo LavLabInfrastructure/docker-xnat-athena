@@ -77,7 +77,7 @@ services:
     volumes:
       - ${CERT_DIR:-./certs}/xnat:/etc/ssl/xnat:ro
       - "${LOG_DIR:-./instance/logs/}/nginx/:/var/log/nginx/"
-      - ${DXA_CONF_DIR:-./configs/xnat-conf}/nginx:/etc/nginx/conf.d/xnat"
+      - ${DXA_CONF_DIR:-./configs/xnat-conf}/nginx:/etc/nginx/conf.d/xnat
 
   xnatdocker:
     image: tecnativa/docker-socket-proxy
